@@ -1,0 +1,16 @@
+[package]
+name = "relm4_examples"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies.relm4]
+version = "0.9.0"
+features = ["libadwaita"]
+
+[dependencies.adw]
+version = "0.7.0"
+package = "libadwaita"
+features = ["v1_5"]
+
+[dependencies]
+rfd = "0.14.1"
