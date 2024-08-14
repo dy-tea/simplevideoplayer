@@ -1,5 +1,5 @@
 [package]
-name = "relm4_examples"
+name = "simple_video_player"
 version = "0.1.0"
 edition = "2021"
 
@@ -13,4 +13,5 @@ package = "libadwaita"
 features = ["v1_5"]
 
 [dependencies]
+ffmpeg-next = "7.0.4"
 rfd = "0.14.1"

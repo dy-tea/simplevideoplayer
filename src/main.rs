@@ -4,9 +4,13 @@ use relm4::{
     prelude::*,
 };
 
+pub mod media_info;
+use media_info::{MediaInfoMsg, MediaInfoWindow};
+
 pub mod about;
 use about::{AboutDialog, AboutDialogMsg};
 
+pub static mut MEDIA_INFO_WINDOW: Option<AsyncController<MediaInfoWindow>> = None;
 pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
 
 struct App {
@@ -14,13 +18,13 @@ struct App {
 }
 
 #[derive(Debug)]
-enum AppMsg {
+pub enum AppMsg {
     SelectFile,
+    OpenMediaInfo,
 }
 
 relm4::new_action_group!(WindowActionGroup, "win");
 
-relm4::new_stateless_action!(MediaInfo, WindowActionGroup, "media_info");
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
 
 #[relm4::component(async)]
@@ -33,7 +37,6 @@ impl AsyncComponent for App {
     menu! {
         main_menu: {
             section! {
-                "Media Info" => MediaInfo,
                 "About" => About,
             },
         }
@@ -56,7 +59,16 @@ impl AsyncComponent for App {
                     pack_end = &gtk::MenuButton {
                         set_icon_name: "open-menu-symbolic",
                         set_menu_model: Some(&main_menu),
-                    }
+                    },
+                    pack_end = &gtk::Button {
+                        set_icon_name: "documentinfo-symbolic",
+                        set_tooltip_text: Some("Media Info"),
+                        #[watch]
+                        set_sensitive: model.file.is_some(),
+                        connect_clicked[sender] => move |_| {
+                            sender.input(AppMsg::OpenMediaInfo);
+                        }
+                    },
                 },
                 gtk::Video {
                     set_autoplay: true,
@@ -81,6 +93,11 @@ impl AsyncComponent for App {
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
 
         unsafe {
+            MEDIA_INFO_WINDOW = Some(
+                MediaInfoWindow::builder()
+                    .launch(widgets.window.clone())
+                    .forward(sender.input_sender(), std::convert::identity),
+            );
             ABOUT_DIALOG = Some(
                 AboutDialog::builder()
                     .transient_for(widgets.window.clone())
@@ -106,17 +123,38 @@ impl AsyncComponent for App {
         match msg {
             AppMsg::SelectFile => {
                 let dialog = rfd::AsyncFileDialog::new()
-                    .add_filter("Video", &["mp4", "mkv"])
+                    .add_filter(
+                        "Video",
+                        &[
+                            "mp4", "mkv", "mka", "mk3d", "mks", "mov", "avi", "wmv", "flv", "f4v",
+                            "webm", "ogv",
+                        ],
+                    )
                     .pick_file();
                 if let Some(path) = dialog.await {
                     self.file = Some(path.path().display().to_string());
+                    #[allow(unused_must_use)]
+                    unsafe {
+                        MEDIA_INFO_WINDOW
+                            .as_ref()
+                            .unwrap_unchecked()
+                            .sender()
+                            .send(MediaInfoMsg::GetInfo(path.path().to_path_buf()));
+                    }
                 }
             }
+            AppMsg::OpenMediaInfo => unsafe {
+                MEDIA_INFO_WINDOW
+                    .as_ref()
+                    .unwrap_unchecked()
+                    .widget()
+                    .present();
+            },
         }
     }
 }
 
 fn main() {
-    let app = RelmApp::new("relm4.video.player");
+    let app = RelmApp::new("dy-tea.simplevideo.player");
     app.run_async::<App>(0);
 }

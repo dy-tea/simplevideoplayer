@@ -26,6 +26,7 @@ impl SimpleComponent for AboutDialog {
             set_developers: &[
                 "Dylan Donnell https://github.com/dy-tea"
             ],
+            set_license_type: gtk::License::Gpl30,
 
             #[watch]
             set_visible: model.visible,
