@@ -30,10 +30,7 @@ impl FactoryComponent for Metadata {
     }
 
     fn init_model(init: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
-        Self {
-            key: init.key,
-            value: init.value,
-        }
+        init
     }
 }
 
