@@ -64,6 +64,10 @@ impl SimpleAsyncComponent for MediaInfoWindow {
                         set_title: "Metadata",
                     }
                 }
+            },
+            connect_close_request[sender] => move |_̱| {
+                let _ = sender.output(AppMsg::CloseMediaInfo);
+                gtk::glib::Propagation::Proceed
             }
         }
     }

@@ -21,6 +21,7 @@ struct App {
 pub enum AppMsg {
     SelectFile,
     OpenMediaInfo,
+    CloseMediaInfo,
 }
 
 relm4::new_action_group!(WindowActionGroup, "win");
@@ -149,6 +150,13 @@ impl AsyncComponent for App {
                     .unwrap_unchecked()
                     .widget()
                     .present();
+            },
+            AppMsg::CloseMediaInfo => unsafe {
+                MEDIA_INFO_WINDOW
+                    .as_ref()
+                    .unwrap_unchecked()
+                    .widget()
+                    .hide();
             },
         }
     }
