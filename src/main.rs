@@ -45,7 +45,7 @@ impl AsyncComponent for App {
 
     view! {
         window = adw::Window {
-            set_title: Some("Video Player"),
+            set_title: Some("Simple Video Player"),
             set_default_width: 800,
             set_default_height: 450,
             gtk::Box {

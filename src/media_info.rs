@@ -22,10 +22,8 @@ impl FactoryComponent for Metadata {
     view! {
         #[root]
         root = adw::ActionRow {
-            #[watch]
             set_title: &self.key,
             add_suffix = &gtk::Label {
-                #[watch]
                 set_text: &self.value
             }
         },
