@@ -1,18 +1,49 @@
-use std::collections::HashMap;
-
 use adw::prelude::*;
-use gtk::prelude::*;
-use relm4::prelude::*;
+use relm4::{factory::FactoryVecDeque, prelude::*};
 
 use ffmpeg_next::format;
 
 use crate::AppMsg;
 
+#[derive(Debug)]
+struct Metadata {
+    key: String,
+    value: String,
+}
+
+#[relm4::factory]
+impl FactoryComponent for Metadata {
+    type Init = Metadata;
+    type Input = ();
+    type Output = ();
+    type CommandOutput = ();
+    type ParentWidget = adw::PreferencesGroup;
+
+    view! {
+        #[root]
+        root = adw::ActionRow {
+            #[watch]
+            set_title: &self.key,
+            add_suffix = &gtk::Label {
+                #[watch]
+                set_text: &self.value
+            }
+        },
+    }
+
+    fn init_model(init: Self::Init, _index: &DynamicIndex, _sender: FactorySender<Self>) -> Self {
+        Self {
+            key: init.key,
+            value: init.value,
+        }
+    }
+}
+
 pub struct MediaInfoWindow {
     format: Option<String>,
     duration: Option<String>,
     bitrate: Option<String>,
-    metadata: Option<HashMap<String, String>>,
+    metadata: FactoryVecDeque<Metadata>,
 }
 
 #[derive(Debug)]
@@ -59,9 +90,9 @@ impl SimpleAsyncComponent for MediaInfoWindow {
                             }
                         }
                     },
-                    #[name = "metadata"]
-                    add = &adw::PreferencesGroup {
-                        set_title: "Metadata",
+                    #[local_ref]
+                    metadata_view -> adw::PreferencesGroup {
+                        set_title: "Metadata"
                     }
                 }
             },
@@ -77,21 +108,27 @@ impl SimpleAsyncComponent for MediaInfoWindow {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
+        let metadata = FactoryVecDeque::builder()
+            .launch(adw::PreferencesGroup::new())
+            .detach();
+
         let model = Self {
             format: None,
             duration: None,
             bitrate: None,
-            metadata: None,
+            metadata,
         };
 
+        let metadata_view = model.metadata.widget();
         let widgets = view_output!();
-
         widgets.window.set_transient_for(Some(&init));
 
         AsyncComponentParts { model, widgets }
     }
 
     async fn update(&mut self, msg: Self::Input, _sender: AsyncComponentSender<Self>) {
+        let mut metadata_guard = self.metadata.guard();
+
         match msg {
             MediaInfoMsg::GetInfo(path) => {
                 let _ = ffmpeg_next::init();
@@ -119,11 +156,13 @@ impl SimpleAsyncComponent for MediaInfoWindow {
                     context.bit_rate() as f64 / 1_000_000.0
                 ));
 
-                let mut map: HashMap<String, String> = HashMap::new();
                 for (a, b) in context.metadata().iter() {
-                    map.insert(a.to_string(), b.to_string());
+                    let first_char = a.chars().next().unwrap_or(' ').to_uppercase().to_string();
+                    metadata_guard.push_back(Metadata {
+                        key: format! {"{}{}", first_char, &a[1..].to_lowercase()},
+                        value: b.to_string(),
+                    });
                 }
-                self.metadata = Some(map);
             }
         }
     }

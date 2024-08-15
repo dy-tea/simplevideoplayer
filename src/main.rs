@@ -83,7 +83,7 @@ impl AsyncComponent for App {
     }
 
     async fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
@@ -120,7 +120,12 @@ impl AsyncComponent for App {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: AppMsg, sender: AsyncComponentSender<Self>, root: &Self::Root) {
+    async fn update(
+        &mut self,
+        msg: AppMsg,
+        _sender: AsyncComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
         match msg {
             AppMsg::SelectFile => {
                 let dialog = rfd::AsyncFileDialog::new()
