@@ -1,8 +1,11 @@
 use adw::prelude::*;
 use relm4::{
-    actions::{RelmAction, RelmActionGroup},
+    actions::{AccelsPlus, RelmAction, RelmActionGroup},
     prelude::*,
 };
+
+pub mod player;
+use player::{Player, PlayerMsg};
 
 pub mod media_info;
 use media_info::{MediaInfoMsg, MediaInfoWindow};
@@ -10,11 +13,17 @@ use media_info::{MediaInfoMsg, MediaInfoWindow};
 pub mod about;
 use about::{AboutDialog, AboutDialogMsg};
 
+pub mod shortcuts;
+use shortcuts::{Shortcuts, ShortcutsMsg};
+
+//pub static mut PLAYER: Option<Controller<Player>> = None;
 pub static mut MEDIA_INFO_WINDOW: Option<AsyncController<MediaInfoWindow>> = None;
 pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
+pub static mut SHORTCUTS_WINDOW: Option<Controller<Shortcuts>> = None;
 
 struct App {
     file: Option<String>,
+    player: Option<Controller<Player>>,
 }
 
 #[derive(Debug)]
@@ -27,11 +36,14 @@ pub enum AppMsg {
 relm4::new_action_group!(WindowActionGroup, "win");
 
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
+relm4::new_stateless_action!(Shortcut, WindowActionGroup, "shortcuts");
+
+relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 
 #[relm4::component(async)]
 impl AsyncComponent for App {
     type Input = AppMsg;
-    type Output = ();
+    type Output = PlayerMsg;
     type Init = u8;
     type CommandOutput = ();
 
@@ -39,6 +51,7 @@ impl AsyncComponent for App {
         main_menu: {
             section! {
                 "About" => About,
+                "Keyboard Shortcuts" => Shortcut
             },
         }
     }
@@ -71,12 +84,10 @@ impl AsyncComponent for App {
                         }
                     },
                 },
-                gtk::Video {
-                    set_autoplay: true,
-                    set_hexpand: true,
-                    set_vexpand: true,
-                    #[watch]
-                    set_filename: model.file.as_ref(),
+                #[name = "player"]
+                gtk::Box {
+                    //#[watch]
+                    //set_filename: model.file.as_ref(),
                 },
             }
         }
@@ -87,11 +98,21 @@ impl AsyncComponent for App {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let model = App { file: None };
+        let mut model = App {
+            file: None,
+            player: None,
+        };
 
-        let widgets = view_output!();
+        let mut widgets = view_output!();
+
+        let player = Player::builder().launch(()).detach();
+        model.player = Some(player);
+        unsafe {
+            widgets.player = model.player.as_ref().unwrap_unchecked().widget().clone();
+        }
 
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
+        let shortcuts_broker: relm4::MessageBroker<ShortcutsMsg> = relm4::MessageBroker::new();
 
         unsafe {
             MEDIA_INFO_WINDOW = Some(
@@ -105,12 +126,29 @@ impl AsyncComponent for App {
                     .launch_with_broker((), &about_dialog_broker)
                     .detach(),
             );
+            SHORTCUTS_WINDOW = Some(
+                Shortcuts::builder()
+                    .transient_for(widgets.window.clone())
+                    .launch_with_broker((), &shortcuts_broker)
+                    .detach(),
+            );
         }
 
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
 
         group.add_action::<About>(RelmAction::new_stateless(move |_| {
             about_dialog_broker.send(AboutDialogMsg::Show);
+        }));
+
+        group.add_action::<Shortcut>(RelmAction::new_stateless(move |_| {
+            shortcuts_broker.send(ShortcutsMsg::Show);
+        }));
+
+        let app = relm4::main_application();
+        app.set_accelerators_for_action::<PlayPause>(&["space"]);
+
+        group.add_action::<PlayPause>(RelmAction::new_stateless(move |_| {
+            println!("Spacebar pressed");
         }));
 
         widgets
@@ -120,12 +158,7 @@ impl AsyncComponent for App {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(
-        &mut self,
-        msg: AppMsg,
-        _sender: AsyncComponentSender<Self>,
-        _root: &Self::Root,
-    ) {
+    async fn update(&mut self, msg: AppMsg, sender: AsyncComponentSender<Self>, root: &Self::Root) {
         match msg {
             AppMsg::SelectFile => {
                 let dialog = rfd::AsyncFileDialog::new()
@@ -139,6 +172,9 @@ impl AsyncComponent for App {
                     .pick_file();
                 if let Some(path) = dialog.await {
                     self.file = Some(path.path().display().to_string());
+                    if let Some(player) = &self.player {
+                        player.emit(PlayerMsg::SetVideo(path.path().to_path_buf()));
+                    }
                     #[allow(unused_must_use)]
                     unsafe {
                         MEDIA_INFO_WINDOW

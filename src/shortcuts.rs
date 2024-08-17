@@ -1,39 +1,37 @@
+use adw::prelude::*;
+use gtk::prelude::*;
 use relm4::prelude::*;
 
 use crate::*;
 
 #[derive(Debug)]
-pub struct AboutDialog {
+pub struct Shortcuts {
     visible: bool,
 }
 
 #[derive(Debug)]
-pub enum AboutDialogMsg {
+pub enum ShortcutsMsg {
     Show,
     Hide,
 }
 
 #[relm4::component(pub)]
-impl SimpleComponent for AboutDialog {
+impl SimpleComponent for Shortcuts {
     type Init = ();
-    type Input = AboutDialogMsg;
+    type Input = ShortcutsMsg;
     type Output = ();
 
     view! {
-        adw::AboutWindow {
-            set_application_name: "Video Player",
-            set_application_icon: "media-playback-start",
-            set_developer_name: "Dylan Donnell",
-            set_developers: &[
-                "Dylan Donnell https://github.com/dy-tea"
-            ],
-            set_license_type: gtk::License::Gpl30,
-
+        adw::Window {
+            set_title: Some("Shortcuts"),
             #[watch]
             set_visible: model.visible,
-
+            gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                gtk::HeaderBar,
+            },
             connect_close_request[sender] => move |_| {
-                sender.input(AboutDialogMsg::Hide);
+                sender.input(ShortcutsMsg::Hide);
                 gtk::glib::Propagation::Proceed
             }
         }
@@ -53,10 +51,10 @@ impl SimpleComponent for AboutDialog {
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
-            AboutDialogMsg::Show => {
+            ShortcutsMsg::Show => {
                 self.visible = true;
             }
-            AboutDialogMsg::Hide => {
+            ShortcutsMsg::Hide => {
                 self.visible = false;
             }
         }
