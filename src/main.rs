@@ -1,8 +1,11 @@
 use adw::prelude::*;
 use relm4::{
-    actions::{RelmAction, RelmActionGroup},
+    actions::{AccelsPlus, RelmAction, RelmActionGroup},
     prelude::*,
 };
+
+pub mod player;
+use player::{Player, PlayerMsg};
 
 pub mod media_info;
 use media_info::{MediaInfoMsg, MediaInfoWindow};
@@ -10,8 +13,13 @@ use media_info::{MediaInfoMsg, MediaInfoWindow};
 pub mod about;
 use about::{AboutDialog, AboutDialogMsg};
 
+pub mod shortcuts;
+use shortcuts::{Shortcuts, ShortcutsMsg};
+
+pub static mut PLAYER: Option<Controller<Player>> = None;
 pub static mut MEDIA_INFO_WINDOW: Option<AsyncController<MediaInfoWindow>> = None;
 pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
+pub static mut SHORTCUTS_WINDOW: Option<Controller<Shortcuts>> = None;
 
 struct App {
     file: Option<String>,
@@ -27,6 +35,9 @@ pub enum AppMsg {
 relm4::new_action_group!(WindowActionGroup, "win");
 
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
+relm4::new_stateless_action!(Shortcut, WindowActionGroup, "shortcuts");
+
+relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 
 #[relm4::component(async)]
 impl AsyncComponent for App {
@@ -39,6 +50,7 @@ impl AsyncComponent for App {
         main_menu: {
             section! {
                 "About" => About,
+                "Keyboard Shortcuts" => Shortcut
             },
         }
     }
@@ -71,13 +83,8 @@ impl AsyncComponent for App {
                         }
                     },
                 },
-                gtk::Video {
-                    set_autoplay: true,
-                    set_hexpand: true,
-                    set_vexpand: true,
-                    #[watch]
-                    set_filename: model.file.as_ref(),
-                },
+                #[local]
+                player_box -> &'static gtk::Box {},
             }
         }
     }
@@ -89,9 +96,27 @@ impl AsyncComponent for App {
     ) -> AsyncComponentParts<Self> {
         let model = App { file: None };
 
-        let widgets = view_output!();
-
+        let player_broker: relm4::MessageBroker<PlayerMsg> = relm4::MessageBroker::new();
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
+        let shortcuts_broker: relm4::MessageBroker<ShortcutsMsg> = relm4::MessageBroker::new();
+
+        unsafe {
+            PLAYER = Some(
+                Player::builder()
+                    .launch_with_broker((), &player_broker)
+                    .detach(),
+            );
+        }
+
+        let player_box = unsafe {
+            #[allow(static_mut_refs)]
+            match &PLAYER {
+                Some(p) => p.widget(),
+                None => unreachable!(),
+            }
+        };
+
+        let widgets = view_output!();
 
         unsafe {
             MEDIA_INFO_WINDOW = Some(
@@ -105,12 +130,29 @@ impl AsyncComponent for App {
                     .launch_with_broker((), &about_dialog_broker)
                     .detach(),
             );
+            SHORTCUTS_WINDOW = Some(
+                Shortcuts::builder()
+                    .transient_for(widgets.window.clone())
+                    .launch_with_broker((), &shortcuts_broker)
+                    .detach(),
+            );
         }
 
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
 
         group.add_action::<About>(RelmAction::new_stateless(move |_| {
             about_dialog_broker.send(AboutDialogMsg::Show);
+        }));
+
+        group.add_action::<Shortcut>(RelmAction::new_stateless(move |_| {
+            shortcuts_broker.send(ShortcutsMsg::Show);
+        }));
+
+        let app = relm4::main_application();
+        app.set_accelerators_for_action::<PlayPause>(&["space"]);
+
+        group.add_action::<PlayPause>(RelmAction::new_stateless(move |_| {
+            player_broker.send(PlayerMsg::PlayPause);
         }));
 
         widgets
@@ -141,6 +183,11 @@ impl AsyncComponent for App {
                     self.file = Some(path.path().display().to_string());
                     #[allow(unused_must_use)]
                     unsafe {
+                        PLAYER
+                            .as_ref()
+                            .unwrap_unchecked()
+                            .sender()
+                            .send(PlayerMsg::SetVideo(path.path().to_path_buf()));
                         MEDIA_INFO_WINDOW
                             .as_ref()
                             .unwrap_unchecked()
