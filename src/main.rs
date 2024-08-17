@@ -16,13 +16,14 @@ use about::{AboutDialog, AboutDialogMsg};
 pub mod shortcuts;
 use shortcuts::{Shortcuts, ShortcutsMsg};
 
-pub static mut PLAYER: Option<Controller<Player>> = None;
-pub static mut MEDIA_INFO_WINDOW: Option<AsyncController<MediaInfoWindow>> = None;
-pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
-pub static mut SHORTCUTS_WINDOW: Option<Controller<Shortcuts>> = None;
-
 struct App {
     file: Option<String>,
+    player: Controller<Player>,
+    media_info_window: AsyncController<MediaInfoWindow>,
+    #[allow(dead_code)]
+    about_dialog: Controller<AboutDialog>,
+    #[allow(dead_code)]
+    shortcuts_window: Controller<Shortcuts>,
 }
 
 #[derive(Debug)]
@@ -84,7 +85,7 @@ impl AsyncComponent for App {
                     },
                 },
                 #[local]
-                player_box -> &'static gtk::Box {},
+                player_box -> gtk::Box {},
             }
         }
     }
@@ -94,49 +95,30 @@ impl AsyncComponent for App {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let model = App { file: None };
-
         let player_broker: relm4::MessageBroker<PlayerMsg> = relm4::MessageBroker::new();
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
         let shortcuts_broker: relm4::MessageBroker<ShortcutsMsg> = relm4::MessageBroker::new();
 
-        unsafe {
-            PLAYER = Some(
-                Player::builder()
-                    .launch_with_broker((), &player_broker)
-                    .detach(),
-            );
-        }
-
-        let player_box = unsafe {
-            #[allow(static_mut_refs)]
-            match &PLAYER {
-                Some(p) => p.widget(),
-                None => unreachable!(),
-            }
+        let model = App {
+            file: None,
+            player: Player::builder()
+                .launch_with_broker((), &player_broker)
+                .detach(),
+            media_info_window: MediaInfoWindow::builder()
+                .launch(root.clone())
+                .forward(sender.input_sender(), std::convert::identity),
+            about_dialog: AboutDialog::builder()
+                .transient_for(root.clone())
+                .launch_with_broker((), &about_dialog_broker)
+                .detach(),
+            shortcuts_window: Shortcuts::builder()
+                .transient_for(root.clone())
+                .launch_with_broker((), &shortcuts_broker)
+                .detach(),
         };
 
+        let player_box = model.player.widget().to_owned();
         let widgets = view_output!();
-
-        unsafe {
-            MEDIA_INFO_WINDOW = Some(
-                MediaInfoWindow::builder()
-                    .launch(widgets.window.clone())
-                    .forward(sender.input_sender(), std::convert::identity),
-            );
-            ABOUT_DIALOG = Some(
-                AboutDialog::builder()
-                    .transient_for(widgets.window.clone())
-                    .launch_with_broker((), &about_dialog_broker)
-                    .detach(),
-            );
-            SHORTCUTS_WINDOW = Some(
-                Shortcuts::builder()
-                    .transient_for(widgets.window.clone())
-                    .launch_with_broker((), &shortcuts_broker)
-                    .detach(),
-            );
-        }
 
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
 
@@ -181,35 +163,22 @@ impl AsyncComponent for App {
                     .pick_file();
                 if let Some(path) = dialog.await {
                     self.file = Some(path.path().display().to_string());
-                    #[allow(unused_must_use)]
-                    unsafe {
-                        PLAYER
-                            .as_ref()
-                            .unwrap_unchecked()
-                            .sender()
-                            .send(PlayerMsg::SetVideo(path.path().to_path_buf()));
-                        MEDIA_INFO_WINDOW
-                            .as_ref()
-                            .unwrap_unchecked()
-                            .sender()
-                            .send(MediaInfoMsg::GetInfo(path.path().to_path_buf()));
-                    }
+                    let _ = self
+                        .player
+                        .sender()
+                        .send(PlayerMsg::SetVideo(path.path().to_path_buf()));
+                    let _ = self
+                        .media_info_window
+                        .sender()
+                        .send(MediaInfoMsg::GetInfo(path.path().to_path_buf()));
                 }
             }
-            AppMsg::OpenMediaInfo => unsafe {
-                MEDIA_INFO_WINDOW
-                    .as_ref()
-                    .unwrap_unchecked()
-                    .widget()
-                    .present();
-            },
-            AppMsg::CloseMediaInfo => unsafe {
-                MEDIA_INFO_WINDOW
-                    .as_ref()
-                    .unwrap_unchecked()
-                    .widget()
-                    .hide();
-            },
+            AppMsg::OpenMediaInfo => {
+                self.media_info_window.widget().present();
+            }
+            AppMsg::CloseMediaInfo => {
+                self.media_info_window.widget().hide();
+            }
         }
     }
 }
