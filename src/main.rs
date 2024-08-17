@@ -16,14 +16,13 @@ use about::{AboutDialog, AboutDialogMsg};
 pub mod shortcuts;
 use shortcuts::{Shortcuts, ShortcutsMsg};
 
-//pub static mut PLAYER: Option<Controller<Player>> = None;
+pub static mut PLAYER: Option<Controller<Player>> = None;
 pub static mut MEDIA_INFO_WINDOW: Option<AsyncController<MediaInfoWindow>> = None;
 pub static mut ABOUT_DIALOG: Option<Controller<AboutDialog>> = None;
 pub static mut SHORTCUTS_WINDOW: Option<Controller<Shortcuts>> = None;
 
 struct App {
     file: Option<String>,
-    player: Option<Controller<Player>>,
 }
 
 #[derive(Debug)]
@@ -43,7 +42,7 @@ relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 #[relm4::component(async)]
 impl AsyncComponent for App {
     type Input = AppMsg;
-    type Output = PlayerMsg;
+    type Output = ();
     type Init = u8;
     type CommandOutput = ();
 
@@ -84,11 +83,8 @@ impl AsyncComponent for App {
                         }
                     },
                 },
-                #[name = "player"]
-                gtk::Box {
-                    //#[watch]
-                    //set_filename: model.file.as_ref(),
-                },
+                #[local]
+                player_box -> &'static gtk::Box {},
             }
         }
     }
@@ -98,21 +94,29 @@ impl AsyncComponent for App {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let mut model = App {
-            file: None,
-            player: None,
-        };
+        let model = App { file: None };
 
-        let mut widgets = view_output!();
-
-        let player = Player::builder().launch(()).detach();
-        model.player = Some(player);
-        unsafe {
-            widgets.player = model.player.as_ref().unwrap_unchecked().widget().clone();
-        }
-
+        let player_broker: relm4::MessageBroker<PlayerMsg> = relm4::MessageBroker::new();
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
         let shortcuts_broker: relm4::MessageBroker<ShortcutsMsg> = relm4::MessageBroker::new();
+
+        unsafe {
+            PLAYER = Some(
+                Player::builder()
+                    .launch_with_broker((), &player_broker)
+                    .detach(),
+            );
+        }
+
+        let player_box = unsafe {
+            #[allow(static_mut_refs)]
+            match &PLAYER {
+                Some(p) => p.widget(),
+                None => unreachable!(),
+            }
+        };
+
+        let widgets = view_output!();
 
         unsafe {
             MEDIA_INFO_WINDOW = Some(
@@ -148,7 +152,7 @@ impl AsyncComponent for App {
         app.set_accelerators_for_action::<PlayPause>(&["space"]);
 
         group.add_action::<PlayPause>(RelmAction::new_stateless(move |_| {
-            println!("Spacebar pressed");
+            player_broker.send(PlayerMsg::PlayPause);
         }));
 
         widgets
@@ -158,7 +162,12 @@ impl AsyncComponent for App {
         AsyncComponentParts { model, widgets }
     }
 
-    async fn update(&mut self, msg: AppMsg, sender: AsyncComponentSender<Self>, root: &Self::Root) {
+    async fn update(
+        &mut self,
+        msg: AppMsg,
+        _sender: AsyncComponentSender<Self>,
+        _root: &Self::Root,
+    ) {
         match msg {
             AppMsg::SelectFile => {
                 let dialog = rfd::AsyncFileDialog::new()
@@ -172,11 +181,13 @@ impl AsyncComponent for App {
                     .pick_file();
                 if let Some(path) = dialog.await {
                     self.file = Some(path.path().display().to_string());
-                    if let Some(player) = &self.player {
-                        player.emit(PlayerMsg::SetVideo(path.path().to_path_buf()));
-                    }
                     #[allow(unused_must_use)]
                     unsafe {
+                        PLAYER
+                            .as_ref()
+                            .unwrap_unchecked()
+                            .sender()
+                            .send(PlayerMsg::SetVideo(path.path().to_path_buf()));
                         MEDIA_INFO_WINDOW
                             .as_ref()
                             .unwrap_unchecked()

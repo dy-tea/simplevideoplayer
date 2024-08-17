@@ -25,9 +25,9 @@ impl SimpleComponent for Player {
     type Widgets = PlayerWidgets;
 
     fn init(
-        init: Self::Init,
+        _init: Self::Init,
         root: Self::Root,
-        sender: ComponentSender<Self>,
+        _sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = Self {
             playing: false,
@@ -48,15 +48,16 @@ impl SimpleComponent for Player {
             .build()
     }
 
-    fn update_view(&self, widgets: &mut Self::Widgets, sender: ComponentSender<Self>) {
-        println!("Executing");
-        widgets.player.set_filename(self.path.as_ref());
+    fn update_view(&self, widgets: &mut Self::Widgets, _sender: ComponentSender<Self>) {
+        if widgets.player.file().is_none() {
+            widgets.player.set_filename(self.path.as_ref());
+        }
         if let Some(stream) = widgets.player.media_stream() {
             stream.set_playing(self.playing);
         }
     }
 
-    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
         match msg {
             PlayerMsg::SetVideo(path) => {
                 self.path = Some(path);

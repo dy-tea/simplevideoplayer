@@ -1,8 +1,5 @@
 use adw::prelude::*;
-use gtk::prelude::*;
 use relm4::prelude::*;
-
-use crate::*;
 
 #[derive(Debug)]
 pub struct Shortcuts {
