@@ -33,6 +33,8 @@ pub enum AppMsg {
     Fullscreen,
     SeekForwards,
     SeekBackwards,
+    VolumeUp,
+    VolumeDown,
     Quit,
 }
 
@@ -47,6 +49,8 @@ relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 relm4::new_stateless_action!(Fullscreen, WindowActionGroup, "fullscreen");
 relm4::new_stateless_action!(SeekForwards, WindowActionGroup, "seekforwards");
 relm4::new_stateless_action!(SeekBackwards, WindowActionGroup, "seekbackwards");
+relm4::new_stateless_action!(VolumeUp, WindowActionGroup, "volumeup");
+relm4::new_stateless_action!(VolumeDown, WindowActionGroup, "volumedown");
 
 #[relm4::component(async)]
 impl AsyncComponent for App {
@@ -135,6 +139,8 @@ impl AsyncComponent for App {
         app.set_accelerators_for_action::<Fullscreen>(&["F"]);
         app.set_accelerators_for_action::<SeekForwards>(&["Right"]);
         app.set_accelerators_for_action::<SeekBackwards>(&["Left"]);
+        app.set_accelerators_for_action::<VolumeUp>(&["Up"]);
+        app.set_accelerators_for_action::<VolumeDown>(&["Down"]);
 
         group.add_action::<Open>(RelmAction::new_stateless(clone!(
             #[strong]
@@ -171,6 +177,7 @@ impl AsyncComponent for App {
                 sender.input(AppMsg::PlayPause);
             }
         )));
+
         group.add_action::<Fullscreen>(RelmAction::new_stateless(clone!(
             #[strong]
             sender,
@@ -178,6 +185,7 @@ impl AsyncComponent for App {
                 sender.input(AppMsg::Fullscreen);
             }
         )));
+
         group.add_action::<SeekForwards>(RelmAction::new_stateless(clone!(
             #[strong]
             sender,
@@ -185,9 +193,27 @@ impl AsyncComponent for App {
                 sender.input(AppMsg::SeekForwards);
             }
         )));
-        group.add_action::<SeekBackwards>(RelmAction::new_stateless(move |_| {
-            sender.input(AppMsg::SeekBackwards);
+
+        group.add_action::<SeekBackwards>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::SeekBackwards);
+            }
+        )));
+
+        group.add_action::<VolumeUp>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::VolumeUp);
+            }
+        )));
+
+        group.add_action::<VolumeDown>(RelmAction::new_stateless(move |_| {
+            sender.input(AppMsg::VolumeDown);
         }));
+
         widgets
             .window
             .insert_action_group("win", Some(&group.into_action_group()));
@@ -242,6 +268,12 @@ impl AsyncComponent for App {
             }
             AppMsg::SeekBackwards => {
                 self.player.sender().send(PlayerMsg::SeekBackwards).unwrap();
+            }
+            AppMsg::VolumeUp => {
+                self.player.sender().send(PlayerMsg::VolumeUp).unwrap();
+            }
+            AppMsg::VolumeDown => {
+                self.player.sender().send(PlayerMsg::VolumeDown).unwrap();
             }
             AppMsg::Quit => {
                 relm4::main_application().quit();

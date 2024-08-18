@@ -4,7 +4,8 @@
 ### Features
 - Play/Pause with spacebar
 - Fullscreening with F key
-- Seek 10 seconds with right/left arrow keys
+- Seek 10 seconds with left/right arrow keys
+- Change volume by 10% with up/down arrow keys
 - Media information
 
 ### Building

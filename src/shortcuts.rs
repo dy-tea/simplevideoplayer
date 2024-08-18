@@ -67,6 +67,22 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("Left")
                 .build(),
         );
+        player.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Volume +10%")
+                .name("volumeup")
+                .action_name("volumeup")
+                .accelerator("Up")
+                .build(),
+        );
+        player.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Volume -10%")
+                .name("volumedown")
+                .action_name("volumedown")
+                .accelerator("Down")
+                .build(),
+        );
 
         let general = gtk::ShortcutsGroup::builder()
             .title("General")
