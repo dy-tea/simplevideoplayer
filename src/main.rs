@@ -20,9 +20,7 @@ struct App {
     file: Option<String>,
     player: Controller<Player>,
     media_info_window: AsyncController<MediaInfoWindow>,
-    #[allow(dead_code)]
     about_dialog: Controller<AboutDialog>,
-    #[allow(dead_code)]
     shortcuts_window: Controller<Shortcuts>,
 }
 
@@ -163,14 +161,14 @@ impl AsyncComponent for App {
                     .pick_file();
                 if let Some(path) = dialog.await {
                     self.file = Some(path.path().display().to_string());
-                    let _ = self
-                        .player
+                    self.player
                         .sender()
-                        .send(PlayerMsg::SetVideo(path.path().to_path_buf()));
-                    let _ = self
-                        .media_info_window
+                        .send(PlayerMsg::SetVideo(path.path().to_path_buf()))
+                        .unwrap();
+                    self.media_info_window
                         .sender()
-                        .send(MediaInfoMsg::GetInfo(path.path().to_path_buf()));
+                        .send(MediaInfoMsg::GetInfo(path.path().to_path_buf()))
+                        .unwrap();
                 }
             }
             AppMsg::OpenMediaInfo => {

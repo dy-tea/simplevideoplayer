@@ -126,7 +126,7 @@ impl SimpleAsyncComponent for MediaInfoWindow {
 
         match msg {
             MediaInfoMsg::GetInfo(path) => {
-                let _ = ffmpeg_next::init();
+                ffmpeg_next::init().unwrap();
                 let context = match format::input(&path) {
                     Ok(c) => c,
                     Err(e) => {
