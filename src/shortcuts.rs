@@ -26,22 +26,18 @@ impl SimpleComponent for Shortcuts {
     fn init(
         _init: Self::Init,
         root: Self::Root,
-        _sender: ComponentSender<Self>,
+        sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let model = Self { visible: false };
 
-        let container = gtk::Box::builder()
-            .orientation(gtk::Orientation::Horizontal)
-            .spacing(5)
-            .margin_start(20)
-            .margin_end(20)
-            .margin_top(5)
-            .margin_bottom(5)
+        let container = gtk::ShortcutsSection::builder()
+            .section_name("shortcuts")
+            .max_height(10)
             .build();
 
         let group1 = gtk::ShortcutsGroup::builder()
-            .title("Video")
-            .name("video")
+            .title("Player")
+            .name("player")
             .build();
         group1.append(
             &gtk::ShortcutsShortcut::builder()
@@ -51,21 +47,63 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("space")
                 .build(),
         );
+        group1.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Fullscreen")
+                .name("fullscreen")
+                .action_name("fullscreen")
+                .accelerator("F")
+                .build(),
+        );
+
+        let group2 = gtk::ShortcutsGroup::builder()
+            .title("General")
+            .name("general")
+            .build();
+        group2.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Open")
+                .name("open")
+                .action_name("open")
+                .accelerator("<Ctrl>O")
+                .build(),
+        );
+        group2.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("About")
+                .name("about")
+                .action_name("about")
+                .accelerator("<Ctrl>A")
+                .build(),
+        );
+        group2.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Shortcuts")
+                .name("shortcuts")
+                .action_name("shortcuts")
+                .accelerator("<Ctrl>question")
+                .build(),
+        );
 
         container.append(&group1);
+        container.append(&group2);
 
         root.set_child(Some(&container));
 
-        let widgets = ShortcutsWidgets { window: root };
+        let widgets = ShortcutsWidgets {
+            window: root.to_owned(),
+        };
+
+        root.connect_close_request(move |_| {
+            sender.input(ShortcutsMsg::Hide);
+            gtk::glib::Propagation::Proceed
+        });
 
         ComponentParts { model, widgets }
     }
 
     fn init_root() -> Self::Root {
-        gtk::ShortcutsWindow::builder()
-            .default_width(600)
-            .default_height(450)
-            .build()
+        gtk::ShortcutsWindow::builder().modal(true).build()
     }
 
     fn update_view(&self, widgets: &mut Self::Widgets, _sender: ComponentSender<Self>) {

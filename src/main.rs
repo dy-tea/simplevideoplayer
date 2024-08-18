@@ -33,10 +33,11 @@ pub enum AppMsg {
 
 relm4::new_action_group!(WindowActionGroup, "win");
 
+relm4::new_stateless_action!(Open, WindowActionGroup, "open");
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
 relm4::new_stateless_action!(Shortcut, WindowActionGroup, "shortcuts");
-
 relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
+relm4::new_stateless_action!(Fullscreen, WindowActionGroup, "fullscreen");
 
 #[relm4::component(async)]
 impl AsyncComponent for App {
@@ -118,7 +119,18 @@ impl AsyncComponent for App {
         let player_box = model.player.widget().to_owned();
         let widgets = view_output!();
 
+        let app = relm4::main_application();
         let mut group = RelmActionGroup::<WindowActionGroup>::new();
+
+        app.set_accelerators_for_action::<Open>(&["<Ctrl>O"]);
+        app.set_accelerators_for_action::<About>(&["<Ctrl>A"]);
+        app.set_accelerators_for_action::<Shortcut>(&["<Ctrl>question"]);
+        app.set_accelerators_for_action::<PlayPause>(&["space"]);
+        app.set_accelerators_for_action::<Fullscreen>(&["F"]);
+
+        group.add_action::<Open>(RelmAction::new_stateless(move |_| {
+            sender.input(AppMsg::SelectFile);
+        }));
 
         group.add_action::<About>(RelmAction::new_stateless(move |_| {
             about_dialog_broker.send(AboutDialogMsg::Show);
@@ -128,11 +140,13 @@ impl AsyncComponent for App {
             shortcuts_broker.send(ShortcutsMsg::Show);
         }));
 
-        let app = relm4::main_application();
-        app.set_accelerators_for_action::<PlayPause>(&["space"]);
-
         group.add_action::<PlayPause>(RelmAction::new_stateless(move |_| {
             player_broker.send(PlayerMsg::PlayPause);
+        }));
+
+        group.add_action::<Fullscreen>(RelmAction::new_stateless(move |_| {
+            // TODO
+            //player_broker.send(PlayerMsg::Fullscreen);
         }));
 
         widgets
@@ -151,6 +165,7 @@ impl AsyncComponent for App {
         match msg {
             AppMsg::SelectFile => {
                 let dialog = rfd::AsyncFileDialog::new()
+                    .set_title("Select a Video")
                     .add_filter(
                         "Video",
                         &[
