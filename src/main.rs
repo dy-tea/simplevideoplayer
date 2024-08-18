@@ -29,6 +29,7 @@ struct App {
 pub enum AppMsg {
     SelectFile,
     OpenMediaInfo,
+    PlayPause,
     SeekForwards,
     SeekBackwards,
 }
@@ -95,16 +96,13 @@ impl AsyncComponent for App {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        let player_broker: relm4::MessageBroker<PlayerMsg> = relm4::MessageBroker::new();
         let media_info_broker: relm4::MessageBroker<MediaInfoMsg> = relm4::MessageBroker::new();
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
         let shortcuts_broker: relm4::MessageBroker<ShortcutsMsg> = relm4::MessageBroker::new();
 
         let model = App {
             file: None,
-            player: Player::builder()
-                .launch_with_broker((), &player_broker)
-                .detach(),
+            player: Player::builder().launch(()).detach(),
             media_info_window: MediaInfoWindow::builder()
                 .transient_for(root.clone())
                 .launch_with_broker(root.clone(), &media_info_broker)
@@ -154,9 +152,13 @@ impl AsyncComponent for App {
             shortcuts_broker.send(ShortcutsMsg::Show);
         }));
 
-        group.add_action::<PlayPause>(RelmAction::new_stateless(move |_| {
-            player_broker.send(PlayerMsg::PlayPause);
-        }));
+        group.add_action::<PlayPause>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::PlayPause);
+            }
+        )));
         group.add_action::<Fullscreen>(RelmAction::new_stateless(move |_| {
             //player_broker.send(PlayerMsg::Fullscreen);
         }));
@@ -212,6 +214,9 @@ impl AsyncComponent for App {
                     .sender()
                     .send(MediaInfoMsg::Show)
                     .unwrap();
+            }
+            AppMsg::PlayPause => {
+                self.player.sender().send(PlayerMsg::PlayPause).unwrap();
             }
             AppMsg::SeekForwards => {
                 self.player.sender().send(PlayerMsg::SeekForwards).unwrap();
