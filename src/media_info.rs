@@ -3,8 +3,6 @@ use relm4::{factory::FactoryVecDeque, prelude::*};
 
 use ffmpeg_next::format;
 
-use crate::AppMsg;
-
 #[derive(Debug)]
 struct Metadata {
     key: String,
@@ -35,6 +33,7 @@ impl FactoryComponent for Metadata {
 }
 
 pub struct MediaInfoWindow {
+    visible: bool,
     format: Option<String>,
     duration: Option<String>,
     bitrate: Option<String>,
@@ -44,19 +43,23 @@ pub struct MediaInfoWindow {
 #[derive(Debug)]
 pub enum MediaInfoMsg {
     GetInfo(std::path::PathBuf),
+    Show,
+    Hide,
 }
 
 #[relm4::component(async, pub)]
 impl SimpleAsyncComponent for MediaInfoWindow {
     type Init = adw::Window;
     type Input = MediaInfoMsg;
-    type Output = AppMsg;
+    type Output = ();
 
     view! {
         #[root]
         window = adw::Window {
             set_title: Some("Media Info"),
             set_default_size: (600, 450),
+            #[watch]
+            set_visible: model.visible,
             gtk::Box {
                 set_orientation: gtk::Orientation::Vertical,
                 adw::HeaderBar,
@@ -92,7 +95,7 @@ impl SimpleAsyncComponent for MediaInfoWindow {
                 }
             },
             connect_close_request[sender] => move |_̱| {
-                let _ = sender.output(AppMsg::CloseMediaInfo);
+                sender.input(MediaInfoMsg::Hide);
                 gtk::glib::Propagation::Proceed
             }
         }
@@ -108,6 +111,7 @@ impl SimpleAsyncComponent for MediaInfoWindow {
             .detach();
 
         let model = Self {
+            visible: false,
             format: None,
             duration: None,
             bitrate: None,
@@ -158,6 +162,12 @@ impl SimpleAsyncComponent for MediaInfoWindow {
                         value: b.to_string(),
                     });
                 }
+            }
+            MediaInfoMsg::Show => {
+                self.visible = true;
+            }
+            MediaInfoMsg::Hide => {
+                self.visible = false;
             }
         }
     }

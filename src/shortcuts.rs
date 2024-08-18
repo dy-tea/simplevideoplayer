@@ -70,6 +70,14 @@ impl SimpleComponent for Shortcuts {
         );
         group2.append(
             &gtk::ShortcutsShortcut::builder()
+                .title("Media Info")
+                .name("info")
+                .action_name("info")
+                .accelerator("<Ctrl>I")
+                .build(),
+        );
+        group2.append(
+            &gtk::ShortcutsShortcut::builder()
                 .title("About")
                 .name("about")
                 .action_name("about")

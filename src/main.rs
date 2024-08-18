@@ -28,13 +28,13 @@ struct App {
 pub enum AppMsg {
     SelectFile,
     OpenMediaInfo,
-    CloseMediaInfo,
 }
 
 relm4::new_action_group!(WindowActionGroup, "win");
 
 relm4::new_stateless_action!(Open, WindowActionGroup, "open");
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
+relm4::new_stateless_action!(Info, WindowActionGroup, "mediainfo");
 relm4::new_stateless_action!(Shortcut, WindowActionGroup, "shortcuts");
 relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 relm4::new_stateless_action!(Fullscreen, WindowActionGroup, "fullscreen");
@@ -80,7 +80,7 @@ impl AsyncComponent for App {
                         set_sensitive: model.file.is_some(),
                         connect_clicked[sender] => move |_| {
                             sender.input(AppMsg::OpenMediaInfo);
-                        }
+                        },
                     },
                 },
                 #[local]
@@ -95,6 +95,7 @@ impl AsyncComponent for App {
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
         let player_broker: relm4::MessageBroker<PlayerMsg> = relm4::MessageBroker::new();
+        let media_info_broker: relm4::MessageBroker<MediaInfoMsg> = relm4::MessageBroker::new();
         let about_dialog_broker: relm4::MessageBroker<AboutDialogMsg> = relm4::MessageBroker::new();
         let shortcuts_broker: relm4::MessageBroker<ShortcutsMsg> = relm4::MessageBroker::new();
 
@@ -104,8 +105,9 @@ impl AsyncComponent for App {
                 .launch_with_broker((), &player_broker)
                 .detach(),
             media_info_window: MediaInfoWindow::builder()
-                .launch(root.clone())
-                .forward(sender.input_sender(), std::convert::identity),
+                .transient_for(root.clone())
+                .launch_with_broker(root.clone(), &media_info_broker)
+                .detach(),
             about_dialog: AboutDialog::builder()
                 .transient_for(root.clone())
                 .launch_with_broker((), &about_dialog_broker)
@@ -125,6 +127,7 @@ impl AsyncComponent for App {
         app.set_accelerators_for_action::<Open>(&["<Ctrl>O"]);
         app.set_accelerators_for_action::<About>(&["<Ctrl>A"]);
         app.set_accelerators_for_action::<Shortcut>(&["<Ctrl>question"]);
+        app.set_accelerators_for_action::<Info>(&["<Ctrl>I"]);
         app.set_accelerators_for_action::<PlayPause>(&["space"]);
         app.set_accelerators_for_action::<Fullscreen>(&["F"]);
 
@@ -134,6 +137,10 @@ impl AsyncComponent for App {
 
         group.add_action::<About>(RelmAction::new_stateless(move |_| {
             about_dialog_broker.send(AboutDialogMsg::Show);
+        }));
+
+        group.add_action::<Info>(RelmAction::new_stateless(move |_| {
+            media_info_broker.send(MediaInfoMsg::Show);
         }));
 
         group.add_action::<Shortcut>(RelmAction::new_stateless(move |_| {
@@ -187,10 +194,10 @@ impl AsyncComponent for App {
                 }
             }
             AppMsg::OpenMediaInfo => {
-                self.media_info_window.widget().present();
-            }
-            AppMsg::CloseMediaInfo => {
-                self.media_info_window.widget().hide();
+                self.media_info_window
+                    .sender()
+                    .send(MediaInfoMsg::Show)
+                    .unwrap();
             }
         }
     }
