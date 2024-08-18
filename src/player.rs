@@ -5,6 +5,7 @@ use relm4::prelude::*;
 pub struct Player {
     path: Option<std::path::PathBuf>,
     playing: bool,
+    seek: i8,
 }
 
 pub struct PlayerWidgets {
@@ -15,6 +16,8 @@ pub struct PlayerWidgets {
 pub enum PlayerMsg {
     SetVideo(std::path::PathBuf),
     PlayPause,
+    SeekForwards,
+    SeekBackwards,
 }
 
 impl SimpleComponent for Player {
@@ -32,6 +35,7 @@ impl SimpleComponent for Player {
         let model = Self {
             playing: false,
             path: None,
+            seek: 1,
         };
 
         let player = gtk::Video::builder().vexpand(true).hexpand(true).build();
@@ -54,16 +58,26 @@ impl SimpleComponent for Player {
         }
         if let Some(stream) = widgets.player.media_stream() {
             stream.set_playing(self.playing);
+            if self.seek != 1 {
+                stream.seek(stream.timestamp() + (10000000 * (self.seek - 1) as i64));
+            }
         }
     }
 
     fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+        self.seek = 1;
         match msg {
             PlayerMsg::SetVideo(path) => {
                 self.path = Some(path);
             }
             PlayerMsg::PlayPause => {
                 self.playing = !self.playing;
+            }
+            PlayerMsg::SeekForwards => {
+                self.seek = 2;
+            }
+            PlayerMsg::SeekBackwards => {
+                self.seek = 0;
             }
         }
     }

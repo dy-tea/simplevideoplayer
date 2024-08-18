@@ -55,6 +55,22 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("F")
                 .build(),
         );
+        group1.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Seek +10s")
+                .name("seekforwards")
+                .action_name("seekforwards")
+                .accelerator("Right")
+                .build(),
+        );
+        group1.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Seek -10s")
+                .name("seekbackwards")
+                .action_name("seekbackwards")
+                .accelerator("Left")
+                .build(),
+        );
 
         let group2 = gtk::ShortcutsGroup::builder()
             .title("General")

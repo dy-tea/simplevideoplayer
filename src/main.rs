@@ -1,4 +1,5 @@
 use adw::prelude::*;
+use gtk::glib::clone;
 use relm4::{
     actions::{AccelsPlus, RelmAction, RelmActionGroup},
     prelude::*,
@@ -28,6 +29,8 @@ struct App {
 pub enum AppMsg {
     SelectFile,
     OpenMediaInfo,
+    SeekForwards,
+    SeekBackwards,
 }
 
 relm4::new_action_group!(WindowActionGroup, "win");
@@ -38,6 +41,8 @@ relm4::new_stateless_action!(Info, WindowActionGroup, "mediainfo");
 relm4::new_stateless_action!(Shortcut, WindowActionGroup, "shortcuts");
 relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 relm4::new_stateless_action!(Fullscreen, WindowActionGroup, "fullscreen");
+relm4::new_stateless_action!(SeekForwards, WindowActionGroup, "seekforwards");
+relm4::new_stateless_action!(SeekBackwards, WindowActionGroup, "seekbackwards");
 
 #[relm4::component(async)]
 impl AsyncComponent for App {
@@ -65,9 +70,7 @@ impl AsyncComponent for App {
                 adw::HeaderBar {
                     pack_start = &gtk::Button {
                         set_label: "Open",
-                        connect_clicked[sender] => move |_| {
-                            sender.input(AppMsg::SelectFile);
-                        },
+                        connect_clicked => AppMsg::SelectFile,
                     },
                     pack_end = &gtk::MenuButton {
                         set_icon_name: "open-menu-symbolic",
@@ -78,9 +81,7 @@ impl AsyncComponent for App {
                         set_tooltip_text: Some("Media Info"),
                         #[watch]
                         set_sensitive: model.file.is_some(),
-                        connect_clicked[sender] => move |_| {
-                            sender.input(AppMsg::OpenMediaInfo);
-                        },
+                        connect_clicked => AppMsg::OpenMediaInfo,
                     },
                 },
                 #[local]
@@ -130,10 +131,16 @@ impl AsyncComponent for App {
         app.set_accelerators_for_action::<Info>(&["<Ctrl>I"]);
         app.set_accelerators_for_action::<PlayPause>(&["space"]);
         app.set_accelerators_for_action::<Fullscreen>(&["F"]);
+        app.set_accelerators_for_action::<SeekForwards>(&["Right"]);
+        app.set_accelerators_for_action::<SeekBackwards>(&["Left"]);
 
-        group.add_action::<Open>(RelmAction::new_stateless(move |_| {
-            sender.input(AppMsg::SelectFile);
-        }));
+        group.add_action::<Open>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::SelectFile);
+            }
+        )));
 
         group.add_action::<About>(RelmAction::new_stateless(move |_| {
             about_dialog_broker.send(AboutDialogMsg::Show);
@@ -150,12 +157,19 @@ impl AsyncComponent for App {
         group.add_action::<PlayPause>(RelmAction::new_stateless(move |_| {
             player_broker.send(PlayerMsg::PlayPause);
         }));
-
         group.add_action::<Fullscreen>(RelmAction::new_stateless(move |_| {
-            // TODO
             //player_broker.send(PlayerMsg::Fullscreen);
         }));
-
+        group.add_action::<SeekForwards>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::SeekForwards);
+            }
+        )));
+        group.add_action::<SeekBackwards>(RelmAction::new_stateless(move |_| {
+            sender.input(AppMsg::SeekBackwards);
+        }));
         widgets
             .window
             .insert_action_group("win", Some(&group.into_action_group()));
@@ -198,6 +212,12 @@ impl AsyncComponent for App {
                     .sender()
                     .send(MediaInfoMsg::Show)
                     .unwrap();
+            }
+            AppMsg::SeekForwards => {
+                self.player.sender().send(PlayerMsg::SeekForwards).unwrap();
+            }
+            AppMsg::SeekBackwards => {
+                self.player.sender().send(PlayerMsg::SeekBackwards).unwrap();
             }
         }
     }
