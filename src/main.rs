@@ -30,6 +30,7 @@ pub enum AppMsg {
     SelectFile,
     OpenMediaInfo,
     PlayPause,
+    Fullscreen,
     SeekForwards,
     SeekBackwards,
     Quit,
@@ -170,9 +171,13 @@ impl AsyncComponent for App {
                 sender.input(AppMsg::PlayPause);
             }
         )));
-        group.add_action::<Fullscreen>(RelmAction::new_stateless(move |_| {
-            //player_broker.send(PlayerMsg::Fullscreen);
-        }));
+        group.add_action::<Fullscreen>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::Fullscreen);
+            }
+        )));
         group.add_action::<SeekForwards>(RelmAction::new_stateless(clone!(
             #[strong]
             sender,
@@ -194,7 +199,7 @@ impl AsyncComponent for App {
         &mut self,
         msg: AppMsg,
         _sender: AsyncComponentSender<Self>,
-        _root: &Self::Root,
+        root: &Self::Root,
     ) {
         match msg {
             AppMsg::SelectFile => {
@@ -228,6 +233,9 @@ impl AsyncComponent for App {
             }
             AppMsg::PlayPause => {
                 self.player.sender().send(PlayerMsg::PlayPause).unwrap();
+            }
+            AppMsg::Fullscreen => {
+                root.set_fullscreened(!root.is_fullscreen());
             }
             AppMsg::SeekForwards => {
                 self.player.sender().send(PlayerMsg::SeekForwards).unwrap();
