@@ -32,6 +32,7 @@ pub enum AppMsg {
     PlayPause,
     SeekForwards,
     SeekBackwards,
+    Quit,
 }
 
 relm4::new_action_group!(WindowActionGroup, "win");
@@ -40,6 +41,7 @@ relm4::new_stateless_action!(Open, WindowActionGroup, "open");
 relm4::new_stateless_action!(About, WindowActionGroup, "about");
 relm4::new_stateless_action!(Info, WindowActionGroup, "mediainfo");
 relm4::new_stateless_action!(Shortcut, WindowActionGroup, "shortcuts");
+relm4::new_stateless_action!(Quit, WindowActionGroup, "quit");
 relm4::new_stateless_action!(PlayPause, WindowActionGroup, "playpause");
 relm4::new_stateless_action!(Fullscreen, WindowActionGroup, "fullscreen");
 relm4::new_stateless_action!(SeekForwards, WindowActionGroup, "seekforwards");
@@ -127,6 +129,7 @@ impl AsyncComponent for App {
         app.set_accelerators_for_action::<About>(&["<Ctrl>A"]);
         app.set_accelerators_for_action::<Shortcut>(&["<Ctrl>question"]);
         app.set_accelerators_for_action::<Info>(&["<Ctrl>I"]);
+        app.set_accelerators_for_action::<Quit>(&["<Ctrl>Q"]);
         app.set_accelerators_for_action::<PlayPause>(&["space"]);
         app.set_accelerators_for_action::<Fullscreen>(&["F"]);
         app.set_accelerators_for_action::<SeekForwards>(&["Right"]);
@@ -151,6 +154,14 @@ impl AsyncComponent for App {
         group.add_action::<Shortcut>(RelmAction::new_stateless(move |_| {
             shortcuts_broker.send(ShortcutsMsg::Show);
         }));
+
+        group.add_action::<Quit>(RelmAction::new_stateless(clone!(
+            #[strong]
+            sender,
+            move |_| {
+                sender.input(AppMsg::Quit);
+            }
+        )));
 
         group.add_action::<PlayPause>(RelmAction::new_stateless(clone!(
             #[strong]
@@ -223,6 +234,9 @@ impl AsyncComponent for App {
             }
             AppMsg::SeekBackwards => {
                 self.player.sender().send(PlayerMsg::SeekBackwards).unwrap();
+            }
+            AppMsg::Quit => {
+                relm4::main_application().quit();
             }
         }
     }

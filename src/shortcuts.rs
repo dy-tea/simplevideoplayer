@@ -30,12 +30,12 @@ impl SimpleComponent for Shortcuts {
     ) -> ComponentParts<Self> {
         let model = Self { visible: false };
 
-        let group1 = gtk::ShortcutsGroup::builder()
+        let player = gtk::ShortcutsGroup::builder()
             .title("Player")
             .name("player")
             .build();
 
-        group1.append(
+        player.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Play/Pause")
                 .name("playpause")
@@ -43,7 +43,7 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("space")
                 .build(),
         );
-        group1.append(
+        player.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Fullscreen")
                 .name("fullscreen")
@@ -51,7 +51,7 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("F")
                 .build(),
         );
-        group1.append(
+        player.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Seek +10s")
                 .name("seekforwards")
@@ -59,7 +59,7 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("Right")
                 .build(),
         );
-        group1.append(
+        player.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Seek -10s")
                 .name("seekbackwards")
@@ -68,12 +68,12 @@ impl SimpleComponent for Shortcuts {
                 .build(),
         );
 
-        let group2 = gtk::ShortcutsGroup::builder()
+        let general = gtk::ShortcutsGroup::builder()
             .title("General")
             .name("general")
             .build();
 
-        group2.append(
+        general.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Open")
                 .name("open")
@@ -81,7 +81,7 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("<Ctrl>O")
                 .build(),
         );
-        group2.append(
+        general.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Media Info")
                 .name("info")
@@ -89,7 +89,7 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("<Ctrl>I")
                 .build(),
         );
-        group2.append(
+        general.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("About")
                 .name("about")
@@ -97,12 +97,20 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("<Ctrl>A")
                 .build(),
         );
-        group2.append(
+        general.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Shortcuts")
                 .name("shortcuts")
                 .action_name("shortcuts")
                 .accelerator("<Ctrl>question")
+                .build(),
+        );
+        general.append(
+            &gtk::ShortcutsShortcut::builder()
+                .title("Quit")
+                .name("quit")
+                .action_name("quit")
+                .accelerator("<Ctrl>Q")
                 .build(),
         );
 
@@ -111,8 +119,8 @@ impl SimpleComponent for Shortcuts {
             .section_name("shortcuts")
             .build();
 
-        container.append(&group1);
-        container.append(&group2);
+        container.append(&player);
+        container.append(&general);
 
         root.set_child(Some(&container));
 
