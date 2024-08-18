@@ -30,15 +30,11 @@ impl SimpleComponent for Shortcuts {
     ) -> ComponentParts<Self> {
         let model = Self { visible: false };
 
-        let container = gtk::ShortcutsSection::builder()
-            .section_name("shortcuts")
-            .max_height(10)
-            .build();
-
         let group1 = gtk::ShortcutsGroup::builder()
             .title("Player")
             .name("player")
             .build();
+
         group1.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Play/Pause")
@@ -76,6 +72,7 @@ impl SimpleComponent for Shortcuts {
             .title("General")
             .name("general")
             .build();
+
         group2.append(
             &gtk::ShortcutsShortcut::builder()
                 .title("Open")
@@ -108,6 +105,11 @@ impl SimpleComponent for Shortcuts {
                 .accelerator("<Ctrl>question")
                 .build(),
         );
+
+        let container = gtk::ShortcutsSection::builder()
+            .orientation(gtk::Orientation::Horizontal)
+            .section_name("shortcuts")
+            .build();
 
         container.append(&group1);
         container.append(&group2);
